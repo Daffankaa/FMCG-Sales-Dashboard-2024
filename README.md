@@ -39,12 +39,3 @@ This project integrates data from multiple sources to provide a unified and inte
 
   ![SQL Example](https://github.com/user-attachments/assets/24563f2a-d5a8-4b3a-ae1a-e14d94f5afda)
 
-## Setup Instructions
-1. **Clone the Repository**: Download the repository to your local machine.
-2. **Configure Python ETL**: Update the Python ETL script configuration with your Google BigQuery and MongoDB credentials.
-3. **Run ETL Pipeline**: Execute the Python script to load data from SQL Server and MongoDB into Google BigQuery.
-4. **Connect Power BI**: Use Power BI’s native Google BigQuery connector to connect to the consolidated dataset and start building dashboards.
-
----
-
-This README provides a structured overview of the project, with clear steps for replication and visuals to showcase your work.
