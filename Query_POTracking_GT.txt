@@ -1,0 +1,179 @@
+SELECT distinct
+CASE  WHEN ISNULL(TRIM(so.szCustPoId), '')  = '' THEN si.szFPoId
+ELSE ISNULL(TRIM(so.szCustPoId), '')END as szFPOid,
+so.gdApprovedId,
+Isnull(PO.szStatus,'')statusPO,
+si.szCustId,ISnull(si.istatusFlag,0)IstatusFlag,
+si.szFSoId,ISNULL(po.dtmCreated, '1900-01-01') as dtmCreatedPO,
+szFDoId,ISNULL(so.dtmCreated, '1900-01-01') as dtmCreatedSO,
+si.szFDnId,ISNULL(delv.outTime, '1900-01-01') as dtmCreatedDO,
+bSentWMS, ISNULL(Porec.dtmCreated, '1900-01-01') as dtmCreatedGR,ISNULL(Porec.dtmReceipt, '1900-01-01') as dtmReceiptPOrec,
+si.szCarrierId,isnull(do.dtmDelivery,'1900-01-01')dtmDelivery,
+isnull(invoice.dtmCreated,'1900-01-01')dtmCreatedInv,
+isnull(purchOrd.dtmTransferred,'1900-01-01')dtmSendWMS,
+cust.szName as custNm,isnull(so.dtmOrder,'1900-01-01')dtmOrder,
+si.szVehicleNo,
+si.szDriverNm,isnull(po.bvoid,0) bvoidPO,
+so.szPaymentTermId,
+case when si.szFPoId = '' then so.dtmCreated else po.dtmCreated end as poDate,
+case when si.szFPoId = '' then so.dtmOrder else po.dtmPO end as podatefilter,
+ISNULL(Porec.szFPoReceipt_sId, '') as szFPoReceipt_sId,
+ISNULL(Porec.dtmreceipt, '1900-01-01') as dtmreceipt,
+CASE
+WHEN TRIM(ISNULL(si.szFSoId, '')) = '' THEN poi.szProductId
+ELSE soi.szProductId
+END as szProductId,
+CASE
+WHEN TRIM(ISNULL(si.szFSoId, '')) = '' THEN poi.decQty
+ELSE soi.decQty
+END as decQty,
+CASE
+WHEN TRIM(ISNULL(si.szFSoId, '')) = '' THEN poi.decPPN
+ELSE soi.decTax
+END as decPPN,
+CASE
+WHEN TRIM(ISNULL(si.szFSoId, '')) = '' THEN poi.decDPP
+ELSE soi.decDPP
+END as decDPP,
+Case
+WHEN TRIM(ISNULL(si.szFSoId, '')) = '' THEN poi.decAmount
+ELSE soi.decAmount
+END as decAmountPOSO,
+CASE
+WHEN TRIM(ISNULL(si.szFSoId, '')) = '' THEN case when poi.bTaxable = 1 and (poi.decDPP+poi.decPPN)<>0 then  poi.decDiscount * poi.decDPP/(poi.decDPP+poi.decPPN) else poi.decDiscount end
+ELSE bonus.decDisc1DPP
+END as decDisc1DPP,
+CASE
+WHEN TRIM(ISNULL(si.szFSoId, '')) = '' THEN case when poi.bTaxable = 1 and (poi.decDPP+poi.decPPN)<>0 then poi.decDiscount * poi.decPPN/(poi.decDPP+poi.decPPN) else 0 end
+ELSE bonus.decDisc1Tax
+END as decDisc1Tax,
+CASE
+WHEN TRIM(ISNULL(si.szFSoId, '')) = '' THEN 0
+ELSE bonus.decDisc2DPP
+END as decDisc2DPP,
+CASE
+WHEN TRIM(ISNULL(si.szFSoId, '')) = '' THEN 0
+ELSE bonus.decDisc2Tax
+END as decDisc2Tax,
+CASE
+WHEN TRIM(ISNULL(si.szFSoId, '')) = '' THEN 0
+ELSE bonus.decDiscFakturDPP
+END as decDiscFakturDPP,
+CASE
+WHEN TRIM(ISNULL(si.szFSoId, '')) = '' THEN 0
+ELSE bonus.decDiscFakturTax
+END as decDiscFakturTax,
+CASE
+WHEN TRIM(ISNULL(si.szFSoId, '')) = '' THEN case when poi.bTaxable = 1 and (poi.decDPP+poi.decPPN)<>0 then  poi.decPrice  * poi.decDPP/(poi.decDPP+poi.decPPN) else poi.decPrice  end
+ELSE case when soi.bTaxable = 1 and (soi.decDPP+soi.decTax)<>0 then soi.decPrice * soi.decDPP/(soi.decDPP+soi.decTax) else soi.decPrice end
+END as decPrice,
+CASE
+WHEN TRIM(ISNULL(si.szFSoId, '')) = '' THEN prod.szName
+ELSE prod1.szName
+END  as prodNm,
+CASE
+WHEN TRIM(ISNULL(FDN.szFDNId, '')) = '' THEN 0
+ELSE isnull(fdnItem1.decQty,0)
+END  as decQtyReceipt,
+isnull(delv.custOrderNo,'') feedback,
+isnull( delvItemJoinSO.qty,0)
+ decQtyDelivered,
+isnull((	
+select top 1 cdn.bApplied from MSYN_INV_CloseDN cdn
+left join MSYN_INV_CloseDNItem cdnItem on cdn.szCloseDNId = cdnItem.szCloseDNId
+where cdnItem.szDNId = si.szFDnId
+order by dtmLastUpdated desc),0)
+as bStatusDN
+,case when ISNULL(invoiceHist.szFInvoiceId,'')='' then invoice.szFinvoiceId
+else invoiceHist.szFInvoiceId end as szFInvoiceId
+,case when ISNULL(invoiceHist.szFInvoiceId,'')='' then isnull(invItem.decQty,0)
+else isnull(invItemHist.decQty,0) end as decQtyInvoice
+	                                            
+,isnull(cust.szCategory_2, '')as szCustCat2
+,isnull(custCat.szDescription,'')as szCustCat2Desc
+,si.dtmETA
+,isnull(cancelOrd.szData,'') as szDataCancelPO
+,		case when so.bApplied = 1 or so.bVoid = 1 then ''
+		else cast( isnull((select top 1 btApprovedLevel from BOS_GEN_ApprovedItem BGADitem 
+	                                            where gdApprovedId = so.gdApprovedId order by BGADitem.btApprovedLevel desc)
+	                                            ,0) + 1 as nvarchar) end 
+		currentApprovalLevel
+,so.bVoid,
+isnull(gd1.dtmApproved,'1900-01-01') dtmApproved1,gd1.bApproved bApproved1,
+isnull(gd2.dtmApproved,'1900-01-01') dtmApproved2,gd2.bApproved bApproved2,
+Isnull(gd3.dtmApproved,'1900-01-01') dtmApproved3,gd3.bApproved bApproved3,
+isnull(FDN.dtmLastUpdated,'1900-01-01') MaxLastUpdated,si.szfdnid
+FROM msyn_sd_salesinquiry si
+LEFT JOIN bos_sd_fso so ON si.szFSoId = so.szFSoId
+LEFT JOIN BOS_PUR_FPo_s po ON si.szFPoId = po.szFPo_sId
+LEFT JOIN BOS_SD_FSoItem soi ON soi.szFSoId = so.szFSoId
+LEFT JOIN BOS_PUR_FPo_sItem poi ON poi.szFPo_sId = po.szFPo_sId
+LEFT JOIN BOS_INV_Product prod ON poi.szProductId = prod.szProductId
+LEFT JOIN BOS_INV_Product prod1 ON soi.szProductId = prod1.szProductId
+LEFT JOIN bos_ar_customer cust ON cust.szCustId = si.szCustId
+LEFT JOIN BOS_PUR_FPoReceipt_s Porec ON Porec.szPoId = po.szFPo_sId AND Porec.szPoId<>''
+LEFT JOIN BOS_PUR_FPoReceipt_sItem PorecI ON PorecI.szFPoReceipt_sId = Porec.szFPoReceipt_sId 
+AND PorecI.szProductId = poi.szProductId
+LEFT JOIN BOS_PUR_FPoReceipt_sItem PorecI1 ON PorecI1.szFPoReceipt_sId = Porec.szFPoReceipt_sId 
+AND PorecI1.szProductId = soi.szProductId
+
+left join BOS_SD_FDo do on do.szDoId = si.szFDoId
+left join MSYN_INT_WMS_DeliveryConfirmation delv on delv.custOrderNo = si.szFSoId and delv.custOrderNo<>'' and do.szDoId = delv.szDoBosnetId
+left join (select custOrderNo,code,orderNo,sum(qty) qty from MSYN_INT_WMS_DeliveryConfirmationItem group by custOrderNo,code,orderNo) delvItemJoinSO on delvItemJoinSO.custOrderNo = delv.custOrderNo and delv.orderNo=delvItemJoinSO.orderNo and delv.custOrderNo<>'' and delvItemJoinSO.code = soi.szProductId
+
+left join BOS_SD_FInvoice invoice on invoice.szFInvoiceId = do.szFInvoiceId
+left join BOS_SD_FInvoiceItem invItem on invItem.szFInvoiceId = invoice.szFInvoiceId and invItem.szProductId = soi.szProductId and invItem.szorderitemtypeid=soi.szorderitemtypeId
+left join BOS_AR_Category custCat on custCat.szCategoryId = cust.szCategory_2
+left join MSYN_INT_PurchaseCancelOrder cancelOrd on cancelOrd.szDocId = si.szFSoId and cancelOrd.bAlreadyTransferred = 1
+left join MSYN_INT_PurchaseOrder purchOrd on purchOrd.szDocId = si.szFSoId and purchOrd.bAlreadyTransferred = 1
+left join (
+								select soItem.szFSoId,bonus.szProductId, bonus.szParentId, bonus.szPaymentType, bonus.szOrderItemTypeId,
+								sum(case when soItem.szPrincipalDiscRefId  = 'Invoice Disc. Item' then 
+								case when soItem.bTaxable = 1 and (soItem.decDPP+soItem.decTax) <> 0
+								then bonus.decBonusAmount *  soitem.decdpp/(soItem.decDPP+soItem.decTax) else bonus.decBonusAmount end
+								else 0 end)as decDisc1DPP,
+								sum(case when soItem.szPrincipalDiscRefId  = 'Invoice Disc. Item' then 
+								case when soItem.bTaxable = 1 and (soItem.decDPP+soItem.decTax) <> 0 
+								then bonus.decBonusAmount *  soitem.decTax/(soItem.decDPP+soItem.decTax) else 0 end
+								else 0 end)as decDisc1Tax,
+								sum(case when soItem.szPrincipalDiscRefId  = 'Invoice Disc. Item 2' then 
+								case when soItem.bTaxable = 1 and (soItem.decDPP+soItem.decTax) <> 0 
+								then bonus.decBonusAmount *  soitem.decdpp/(soItem.decDPP+soItem.decTax) else bonus.decBonusAmount end
+								else 0 end)as decDisc2DPP,
+								sum(case when soItem.szPrincipalDiscRefId  = 'Invoice Disc. Item 2' then 
+								case when soItem.bTaxable = 1 and (soItem.decDPP+soItem.decTax) <> 0
+								then bonus.decBonusAmount *  soitem.decTax/(soItem.decDPP+soItem.decTax) else bonus.decBonusAmount end
+								else 0 end)as decDisc2Tax,
+								sum(case when soItem.szPrincipalDiscRefId  = 'Invoice Disc.' then 
+								case when soItem.bTaxable = 1 and (soItem.decDPP+soItem.decTax) <> 0
+								then bonus.decBonusAmount *  soitem.decdpp/(soItem.decDPP+soItem.decTax) else bonus.decBonusAmount end
+								else 0 end)as decDiscFakturDPP,
+								sum(case when soItem.szPrincipalDiscRefId  = 'Invoice Disc.' then 
+								case when soItem.bTaxable = 1 and (soItem.decDPP+soItem.decTax) <> 0
+								then bonus.decBonusAmount *  soitem.decTax/(soItem.decDPP+soItem.decTax) else bonus.decBonusAmount end
+								else 0 end)as decDiscFakturTax
+								from BOS_SD_FSoItem soItem
+								left join bos_sd_fso so on soitem.szFsoId = so.szFSoId
+								left join BOS_SD_FSoItemBonusSource bonus on bonus.szFSoId = soItem.szFSoId and soitem.shItemNumber = bonus.shItemNumber
+								where bonus.szProductId is not null AND so.dtmorder > ?   group by soItem.szFSoId,bonus.szProductId, bonus.szParentId, bonus.szPaymentType, bonus.szOrderItemTypeId
+
+) bonus 
+on bonus.szFSoId = soi.szFSoId and soi.szProductId = bonus.szProductId and bonus.szParentId=soi.szParentId
+and bonus.szPaymentType=soi.szPaymentType and bonus.szOrderItemTypeId=soi.szOrderItemTypeId
+
+left join (select top 1 btApprovedLevel,gdapprovedId from BOS_GEN_ApprovedItem BGADitem 
+		 order by BGADitem.btApprovedLevel desc) approvedlvl on approvedlvl.gdApprovedId = so.gdApprovedId
+left join BOS_GEN_ApprovedItem gd1 on gd1.gdApprovedId = so.gdApprovedId and gd1.btApprovedLevel =1
+left join BOS_GEN_ApprovedItem gd2 on gd2.gdApprovedId = so.gdApprovedId and gd2.btApprovedLevel =2
+left join BOS_GEN_ApprovedItem gd3 on gd3.gdApprovedId = so.gdApprovedId and gd3.btApprovedLevel =3
+                                           
+left join MSYN_INV_FDn FDN on FDN.szfdnid = si.szFDNId
+left join MSYN_INV_FDnItem	fdnItem1 on FDN.szFDNId = fdnItem1.szFDNId and fdnItem1.szProductId = soi.szProductId
+left join (select top 1 szDoId,szDoIdOld from MSYN_INV_HistoryDODn order by dtmLastUpdated desc) Hist on Hist.szDoIdOld = do.szDoId
+left join BOS_SD_FDo doHist on Hist.szDoId = doHist.szDoId
+left join BOS_SD_FInvoice invoiceHist on invoiceHist.szFInvoiceId = doHist.szFInvoiceId
+left join BOS_SD_FInvoiceItem invItemHist on invItemHist.szFInvoiceId = invoiceHist.szFInvoiceId and invItemHist.szProductId = soi.szProductId
+where 1=1 and (soi.szOrderItemTypeId = 'JUAL' OR poi.purchaseItemTypeId='BELI' OR poi.purchaseItemTypeId='BELI-BERIKAT')
+ AND (
+        (si.szFPoId <> '' AND po.dtmPO >= ? AND po.dtmPO <= ?)
+        OR (si.szFPoId = '' AND so.dtmOrder >= ? AND  so.dtmOrder <= ?) ) 

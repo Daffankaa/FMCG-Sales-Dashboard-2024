@@ -1,0 +1,239 @@
+SELECT BOS_SD_FInvoice.szWorkplaceId, ISNULL(BOS_GL_Workplace.szName,''), ISNULL(BOS_SD_FDo.szFSoId, ''), ISNULL(BOS_SD_FDo.szDoId, ''), BOS_SD_FInvoice.szFInvoiceId, dbo.KGenReturnDateNoTime(BOS_SD_FInvoice.dtmPeriode) AS dtmPeriode, UPPER(BOS_SD_FInvoice.szSalesId), Sales.szName, ISNULL(BOS_SD_FDo.szCustId, BOS_SD_FInvoice.szCustId), CASE WHEN BOS_SD_FDo.szCustId IS NOT NULL 
+                                   THEN ISNULL(CustomerDelivery.szName, '') 
+                                   ELSE ISNULL(BOS_AR_Customer.szName, '')
+                                   END, ISNULL(BOS_AR_Customer.CustszAddress_1, ''), BOS_AR_CustLocation.LocationszCity, BOS_SD_FInvoiceItem.szProductId, isnull(BOS_INV_Product.szName,''), 0 AS Price, BOS_SD_FInvoiceItem.decQty, 
+                    (
+		                    CASE 
+			                    WHEN BOS_SD_FInvoiceItem.bTaxable = 0
+				                    THEN BOS_SD_FInvoiceItem.decAmount
+			                    ELSE (
+					                    CASE 
+						                    WHEN BOS_SD_FInvoiceItem.decDPP + BOS_SD_FInvoiceItem.decTax <> 0
+							                    THEN BOS_SD_FInvoiceItem.decDPP + (BOS_SD_FInvoiceItem.decDiscount * BOS_SD_FInvoiceItem.decDPP / (BOS_SD_FInvoiceItem.decDPP + BOS_SD_FInvoiceItem.decTax))
+						                    ELSE BOS_SD_FInvoiceItem.decDPP + BOS_SD_FInvoiceItem.decTax
+						                    END
+					                    )
+			                    END
+		                    )
+             AS decAmount, BOS_SD_FInvoiceItem.decTax + isnull(a.sumDecBonusAmountTax,0), 
+                    (
+		                    CASE 
+			                    WHEN BOS_SD_FInvoiceItem.bTaxable = 0
+				                    THEN BOS_SD_FInvoiceItem.decAmount-BOS_SD_FInvoiceItem.decDiscount-coalesce(a.sumDecBonusAmount,0)
+			                    ELSE (
+					                    CASE 
+						                    WHEN BOS_SD_FInvoiceItem.decDPP + BOS_SD_FInvoiceItem.decTax <> 0
+							                    THEN BOS_SD_FInvoiceItem.decDPP - (coalesce(a.sumDecBonusAmount,0) * BOS_SD_FInvoiceItem.decDPP / (BOS_SD_FInvoiceItem.decDPP + BOS_SD_FInvoiceItem.decTax))
+						                    ELSE BOS_SD_FInvoiceItem.decDPP + BOS_SD_FInvoiceItem.decTax
+						                    END
+					                    )
+			                    END
+		                    )
+             AS decNettAmount, 
+                    ( (
+		                    CASE 
+			                    WHEN BOS_SD_FInvoiceItem.bTaxable = 0
+				                    THEN BOS_SD_FInvoiceItem.decAmount-BOS_SD_FInvoiceItem.decDiscount-coalesce(a.sumDecBonusAmount,0)
+			                    ELSE (
+					                    CASE 
+						                    WHEN BOS_SD_FInvoiceItem.decDPP + BOS_SD_FInvoiceItem.decTax <> 0
+							                    THEN BOS_SD_FInvoiceItem.decDPP - (coalesce(a.sumDecBonusAmount,0) * BOS_SD_FInvoiceItem.decDPP / (BOS_SD_FInvoiceItem.decDPP + BOS_SD_FInvoiceItem.decTax))
+						                    ELSE BOS_SD_FInvoiceItem.decDPP + BOS_SD_FInvoiceItem.decTax
+						                    END
+					                    )
+			                    END
+		                    ) + BOS_SD_FInvoiceItem.decTax + isnull(a.sumDecBonusAmountTax,0) ) 
+             AS decNettAmountWithTax, 
+                (
+		                CASE 
+			                WHEN BOS_SD_FInvoiceItem.bTaxable = 0
+				                THEN BOS_SD_FInvoiceItem.decDiscount
+			                ELSE (
+					                CASE 
+						                WHEN BOS_SD_FInvoiceItem.decDPP + BOS_SD_FInvoiceItem.decTax <> 0 THEN
+							                BOS_SD_FInvoiceItem.decDiscount * BOS_SD_FInvoiceItem.decDPP / (BOS_SD_FInvoiceItem.decDPP + BOS_SD_FInvoiceItem.decTax)
+						                ELSE 
+                                            BOS_SD_FInvoiceItem.decDPP + BOS_SD_FInvoiceItem.decTax
+						                END
+					                )
+			                END
+		                ) + 
+               (        CASE
+                            WHEN BOS_SD_FInvoiceItem.bTaxable = 0
+                                THEN coalesce(a.sumDecBonusAmount,0)
+                        ELSE
+                                CASE
+                                    WHEN BOS_SD_FInvoiceItem.decDPP + BOS_SD_FInvoiceItem.decTax <> 0 THEN
+                                        coalesce(a.sumDecBonusAmount,0) * BOS_SD_FInvoiceItem.decDPP / (BOS_SD_FInvoiceItem.decDPP + BOS_SD_FInvoiceItem.decTax)
+                                    ELSE
+                                        coalesce(a.sumDecBonusAmount,0)
+                                    END
+                        END
+                )
+             AS decDiscount, 
+                        (
+		                        CASE 
+			                        WHEN BOS_SD_FInvoiceItem.bTaxable = 0
+				                        THEN BOS_SD_FInvoiceItem.decDiscount
+			                        ELSE (
+					                        CASE 
+						                        WHEN BOS_SD_FInvoiceItem.decDPP + BOS_SD_FInvoiceItem.decTax <> 0
+							                        THEN BOS_SD_FInvoiceItem.decDiscount * BOS_SD_FInvoiceItem.decDPP / (BOS_SD_FInvoiceItem.decDPP + BOS_SD_FInvoiceItem.decTax)
+						                        ELSE BOS_SD_FInvoiceItem.decDPP + BOS_SD_FInvoiceItem.decTax
+						                        END
+					                        )
+			                        END
+		                        )
+             AS decDiscountItem   FROM BOS_SD_FInvoiceItem LEFT JOIN BOS_SD_FInvoice ON BOS_SD_FInvoice.szFInvoiceId = BOS_SD_FInvoiceItem.szFInvoiceId LEFT JOIN BOS_SD_FInvoice AS INV_CANCEL ON BOS_SD_FInvoice.szCanceledByInvId = INV_CANCEL.szFInvoiceId LEFT JOIN BOS_GL_Workplace ON BOS_GL_Workplace.szWorkplaceId = BOS_SD_FInvoice.szWorkplaceId LEFT JOIN BOS_SD_FDo ON BOS_SD_FDo.szDoId = BOS_SD_FInvoiceItem.szDoId LEFT JOIN BOS_SD_FDoReversal AS REVERSAL_DO ON BOS_SD_FDo.szDoId = REVERSAL_DO.szFDoId and REVERSAL_DO.bApplied = 1 LEFT JOIN BOS_SD_FDoReversal AS REVERSAL_REVERSE_DO ON BOS_SD_FDo.szDoId = REVERSAL_REVERSE_DO.szReverseDoId and REVERSAL_REVERSE_DO.bApplied = 1 LEFT JOIN BOS_AR_Customer CustomerDelivery ON CustomerDelivery.szCustId = BOS_SD_FDo.szCustId LEFT JOIN BOS_SD_DistrChannel ON BOS_SD_DistrChannel.szDistrChannelId = CustomerDelivery.szDistrChannelId LEFT JOIN BOS_AR_CustLocation ON BOS_AR_CustLocation.szCustId = CustomerDelivery.szDeliverToCustId and BOS_AR_CustLocation.btLocId = 0                     
+                    LEFT JOIN BOS_AR_Category AS CATEGORY1 ON CATEGORY1.szCategoryId = CustomerDelivery.szCategory_1
+                    LEFT JOIN BOS_AR_Category AS CATEGORY2 ON CATEGORY2.szCategoryId = CustomerDelivery.szCategory_2
+                    LEFT JOIN BOS_AR_Category AS CATEGORY3 ON CATEGORY3.szCategoryId = CustomerDelivery.szCategory_3
+                    LEFT JOIN BOS_AR_Category AS CATEGORY4 ON CATEGORY4.szCategoryId = CustomerDelivery.szCategory_4
+                    LEFT JOIN BOS_AR_Category AS CATEGORY5 ON CATEGORY5.szCategoryId = CustomerDelivery.szCategory_5
+                    LEFT JOIN BOS_AR_Category AS CATEGORY6 ON CATEGORY6.szCategoryId = CustomerDelivery.szCategory_6
+                    LEFT JOIN BOS_AR_Category AS CATEGORY7 ON CATEGORY7.szCategoryId = CustomerDelivery.szCategory_7
+                    LEFT JOIN BOS_AR_Category AS CATEGORY8 ON CATEGORY8.szCategoryId = CustomerDelivery.szCategory_8
+                    LEFT JOIN BOS_AR_Category AS CATEGORY9 ON CATEGORY9.szCategoryId = CustomerDelivery.szCategory_9
+                    LEFT JOIN BOS_AR_Category AS CATEGORY10 ON CATEGORY10.szCategoryId = CustomerDelivery.szCategory_10 LEFT JOIN BOS_AR_Customer ON BOS_AR_Customer.szCustId = BOS_SD_FInvoice.szCustId LEFT JOIN BOS_GL_Workplace AS COLL_Workplace ON COLL_Workplace.szWorkplaceId = BOS_AR_Customer.szCollWorkplaceId LEFT JOIN BOS_TIN_CustTaxIndConfig AS BOS_TIN_CustTaxIndConfig ON BOS_TIN_CustTaxIndConfig.szCustId = BOS_AR_Customer.szCustId LEFT JOIN BOS_AR_Customer AS BAC_SOLD ON BAC_SOLD.szCustId = BOS_AR_Customer.szSoldToCustId LEFT JOIN BOS_AR_CustInvoice ON BOS_AR_CustInvoice.szCustId = BOS_AR_Customer.szInvoiceToCustId LEFT JOIN BOS_GL_Workplace AS DO_Workplace ON DO_Workplace.szWorkplaceId = coalesce(BOS_SD_FDo.szWorkplaceId, BOS_SD_FInvoice.szWorkplaceId) LEFT JOIN BOS_SD_SalesOrganization AS SO1 ON SO1.szSalesOrgId = DO_Workplace.szSalesOrgId LEFT JOIN BOS_SD_SalesOrganization AS SO2 ON SO2.szSalesOrgId = SO1.szParentSalesOrgId LEFT JOIN BOS_SD_SalesOrganization AS SO3 ON SO3.szSalesOrgId = SO2.szParentSalesOrgId LEFT JOIN BOS_INV_Product ON BOS_INV_Product.szProductId = BOS_SD_FInvoiceItem.szProductId                     
+                    LEFT JOIN BOS_INV_ProductCategory prodCat1 ON prodCat1.szProductCategoryId = BOS_INV_Product.szCategory_1
+                    LEFT JOIN BOS_INV_ProductCategory prodCat2 ON prodCat2.szProductCategoryId = BOS_INV_Product.szCategory_2
+                    LEFT JOIN BOS_INV_ProductCategory prodCat3 ON prodCat3.szProductCategoryId = BOS_INV_Product.szCategory_3
+                    LEFT JOIN BOS_INV_ProductCategory prodCat4 ON prodCat4.szProductCategoryId = BOS_INV_Product.szCategory_4
+                    LEFT JOIN BOS_INV_ProductCategory prodCat5 ON prodCat5.szProductCategoryId = BOS_INV_Product.szCategory_5
+                    LEFT JOIN BOS_INV_ProductCategory prodCat6 ON prodCat6.szProductCategoryId = BOS_INV_Product.szCategory_6
+                    LEFT JOIN BOS_INV_ProductCategory prodCat7 ON prodCat7.szProductCategoryId = BOS_INV_Product.szCategory_7
+                    LEFT JOIN BOS_INV_ProductCategory prodCat8 ON prodCat8.szProductCategoryId = BOS_INV_Product.szCategory_8
+                    LEFT JOIN BOS_INV_ProductCategory prodCat9 ON prodCat9.szProductCategoryId = BOS_INV_Product.szCategory_9
+                    LEFT JOIN BOS_INV_ProductCategory prodCat10 ON prodCat10.szProductCategoryId = BOS_INV_Product.szCategory_10 LEFT JOIN BOS_INV_ProductPurchaseInfo ON BOS_INV_ProductPurchaseInfo.szProductId = BOS_INV_Product.szProductId LEFT JOIN BOS_AP_Supplier ON BOS_AP_Supplier.szSuppId = BOS_INV_ProductPurchaseInfo.szDefaultSuppId LEFT JOIN BOS_GEN_FlagCashCredit ON BOS_GEN_FlagCashCredit.bCash = CONVERT(tinyint, BOS_SD_FInvoice.bCash) LEFT JOIN BOS_GEN_YesNo AS BGY_Taxable ON BGY_Taxable.bYesNo = CONVERT(tinyint, BOS_SD_FInvoiceItem.bTaxable) LEFT JOIN BOS_SD_CustCollRoutine ON BOS_SD_CustCollRoutine.szCustId = BOS_SD_FInvoice.szCustId LEFT JOIN BOS_SD_Route ON BOS_SD_Route.szRouteId = BOS_SD_CustCollRoutine.szDefaultRouteId LEFT JOIN BOS_PI_Employee AS COLLECTOR ON COLLECTOR.szEmployeeId = BOS_SD_Route.szOpUserId LEFT JOIN BOS_PI_Employee AS Sales ON Sales.szEmployeeId = BOS_SD_FInvoice.szSalesId LEFT JOIN BOS_PI_Employee AS SupSales ON SupSales.szEmployeeId = Sales.szSupervisorId LEFT JOIN BOS_PI_Employee AS EmpSup2 ON EmpSup2.szEmployeeId = BOS_SD_FDo.szSalesSupervisorId_2 LEFT JOIN BOS_PI_Employee AS EmpSup3 ON EmpSup3.szEmployeeId = BOS_SD_FDo.szSalesSupervisorId_3 LEFT JOIN BOS_PI_Employee AS DRIVER ON DRIVER.szEmployeeId = BOS_SD_FDo.szDriverId LEFT JOIN BOS_BIZ_PeriodicCalendar PerCal ON PerCal.dtmDate = dbo.KGenReturnDateNoTime(BOS_SD_FInvoice.dtmPeriode) LEFT JOIN BOS_INV_CompUomItem on BOS_INV_CompUomItem.szCompUomId = BOS_INV_Product.szCompUomId and BOS_INV_CompUomItem.shItemNumber = 0 LEFT JOIN BOS_GL_Company ON BOS_GL_Company.szCompanyId = DO_Workplace.szCompanyId LEFT JOIN BOS_INV_Vehicle ON BOS_SD_FDo.szVehicleId = BOS_INV_Vehicle.szVehicleId LEFT JOIN BOS_INV_VehicleCapacity ON BOS_INV_VehicleCapacity.szVehicleCapacityId = BOS_INV_Vehicle.szVehicleCapacityId LEFT JOIN BOS_INV_OrderItemType ON BOS_SD_FInvoiceItem.szOrderItemTypeId = BOS_INV_OrderItemType.szOrderItemTypeId
+                LEFT JOIN BOS_INV_ProductTechnicalSpecInfo specInfo on specInfo.szProductId = BOS_SD_FInvoiceItem.szProductId
+                LEFT JOIN (
+	                 SELECT BOS_SD_FInvItemBonusSource.szfinvoiceid, BOS_SD_FInvItemBonusSource.szproductid, 
+                            BOS_SD_FInvItemBonusSource.szFDoId, BOS_SD_FInvItemBonusSource.szParentId, BOS_SD_FInvItemBonusSource.szPaymentType, 
+                            BOS_SD_FInvItemBonusSource.szOrderItemTypeId
+		                ,sum(BOS_SD_FInvItemBonusSource.decbonusamount) AS sumDecBonusAmount
+                        ,sum(case when BOS_SD_FinvoiceItem.decDiscount=0 then 0 else BOS_SD_FInvItemBonusSource.decbonusamount * BOS_SD_FinvoiceItem.decTax / BOS_SD_FinvoiceItem.decDiscount end) as sumDecBonusAmountTax
+	                FROM BOS_SD_FInvItemBonusSource 
+                    JOIN BOS_SD_FinvoiceItem ON BOS_SD_FinvoiceItem.szFinvoiceId = BOS_SD_FInvItemBonusSource.szFInvoiceId
+                        AND BOS_SD_FinvoiceItem.shItemNumber = BOS_SD_FInvItemBonusSource.shItemNumber
+                    WHERE BOS_SD_FinvoiceItem.szPaymentType IN ('TDB', 'DOB')
+	                GROUP BY BOS_SD_FInvItemBonusSource.szfinvoiceid, BOS_SD_FInvItemBonusSource.szproductid, BOS_SD_FInvItemBonusSource.szFDoId, 
+                                BOS_SD_FInvItemBonusSource.szParentId, BOS_SD_FInvItemBonusSource.szPaymentType, BOS_SD_FInvItemBonusSource.szOrderItemTypeId
+	                ) a ON a.szFInvoiceId = BOS_SD_FInvoiceItem.szFInvoiceId
+	                AND a.szProductId = BOS_SD_FInvoiceItem.szProductId
+                    AND a.szFDoId = BOS_SD_FInvoiceItem.szDoId
+                    AND a.szParentId = BOS_SD_FInvoiceItem.szParentId
+                    AND a.szPaymentType = BOS_SD_FInvoiceItem.szPaymentType
+                    AND a.szOrderItemTypeId = BOS_SD_FInvoiceItem.szOrderItemTypeId
+                LEFT JOIN BOS_GL_TaxType ON BOS_GL_TaxType.szTaxTypeId = BOS_INV_Product.szTaxTypeId
+                LEFT JOIN NG_MART_ProductInfo on NG_MART_ProductInfo.productId = BOS_SD_FInvoiceItem.szProductId
+                LEFT JOIN BOS_INV_Principal as princip on princip.szPrincipalId = NG_MART_ProductInfo.principalId  
+                 LEFT MERGE JOIN 
+                                            (
+                                              SELECT szVehicleId = BOS_SD_FDo.szVehicleId, dtmDate = dbo.KGenReturnDateNoTime(BOS_SD_FInvoice.dtmPeriode) 
+                                                   , decVolume1 = SUM(CASE WHEN BOS_SD_FInvoiceItem.decQty <= 0 THEN 0 ELSE BOS_SD_FInvoiceItem.decQty * ISNULL(specInfo.decVolume, 0) / 1000 END)
+                                                   , decWeight1 = SUM(CASE WHEN BOS_SD_FInvoiceItem.decQty <= 0 THEN 0 ELSE BOS_SD_FInvoiceItem.decQty * ISNULL(specInfo.decWeight, 0) / 1000 END)
+                                               FROM BOS_SD_FInvoiceItem LEFT JOIN BOS_SD_FInvoice ON BOS_SD_FInvoice.szFInvoiceId = BOS_SD_FInvoiceItem.szFInvoiceId LEFT JOIN BOS_SD_FInvoice AS INV_CANCEL ON BOS_SD_FInvoice.szCanceledByInvId = INV_CANCEL.szFInvoiceId LEFT JOIN BOS_GL_Workplace ON BOS_GL_Workplace.szWorkplaceId = BOS_SD_FInvoice.szWorkplaceId LEFT JOIN BOS_SD_FDo ON BOS_SD_FDo.szDoId = BOS_SD_FInvoiceItem.szDoId LEFT JOIN BOS_SD_FDoReversal AS REVERSAL_DO ON BOS_SD_FDo.szDoId = REVERSAL_DO.szFDoId and REVERSAL_DO.bApplied = 1 LEFT JOIN BOS_SD_FDoReversal AS REVERSAL_REVERSE_DO ON BOS_SD_FDo.szDoId = REVERSAL_REVERSE_DO.szReverseDoId and REVERSAL_REVERSE_DO.bApplied = 1 LEFT JOIN BOS_AR_Customer CustomerDelivery ON CustomerDelivery.szCustId = BOS_SD_FDo.szCustId LEFT JOIN BOS_SD_DistrChannel ON BOS_SD_DistrChannel.szDistrChannelId = CustomerDelivery.szDistrChannelId LEFT JOIN BOS_AR_CustLocation ON BOS_AR_CustLocation.szCustId = CustomerDelivery.szDeliverToCustId and BOS_AR_CustLocation.btLocId = 0                     
+                    LEFT JOIN BOS_AR_Category AS CATEGORY1 ON CATEGORY1.szCategoryId = CustomerDelivery.szCategory_1
+                    LEFT JOIN BOS_AR_Category AS CATEGORY2 ON CATEGORY2.szCategoryId = CustomerDelivery.szCategory_2
+                    LEFT JOIN BOS_AR_Category AS CATEGORY3 ON CATEGORY3.szCategoryId = CustomerDelivery.szCategory_3
+                    LEFT JOIN BOS_AR_Category AS CATEGORY4 ON CATEGORY4.szCategoryId = CustomerDelivery.szCategory_4
+                    LEFT JOIN BOS_AR_Category AS CATEGORY5 ON CATEGORY5.szCategoryId = CustomerDelivery.szCategory_5
+                    LEFT JOIN BOS_AR_Category AS CATEGORY6 ON CATEGORY6.szCategoryId = CustomerDelivery.szCategory_6
+                    LEFT JOIN BOS_AR_Category AS CATEGORY7 ON CATEGORY7.szCategoryId = CustomerDelivery.szCategory_7
+                    LEFT JOIN BOS_AR_Category AS CATEGORY8 ON CATEGORY8.szCategoryId = CustomerDelivery.szCategory_8
+                    LEFT JOIN BOS_AR_Category AS CATEGORY9 ON CATEGORY9.szCategoryId = CustomerDelivery.szCategory_9
+                    LEFT JOIN BOS_AR_Category AS CATEGORY10 ON CATEGORY10.szCategoryId = CustomerDelivery.szCategory_10 LEFT JOIN BOS_AR_Customer ON BOS_AR_Customer.szCustId = BOS_SD_FInvoice.szCustId LEFT JOIN BOS_GL_Workplace AS COLL_Workplace ON COLL_Workplace.szWorkplaceId = BOS_AR_Customer.szCollWorkplaceId LEFT JOIN BOS_TIN_CustTaxIndConfig AS BOS_TIN_CustTaxIndConfig ON BOS_TIN_CustTaxIndConfig.szCustId = BOS_AR_Customer.szCustId LEFT JOIN BOS_AR_Customer AS BAC_SOLD ON BAC_SOLD.szCustId = BOS_AR_Customer.szSoldToCustId LEFT JOIN BOS_AR_CustInvoice ON BOS_AR_CustInvoice.szCustId = BOS_AR_Customer.szInvoiceToCustId LEFT JOIN BOS_GL_Workplace AS DO_Workplace ON DO_Workplace.szWorkplaceId = coalesce(BOS_SD_FDo.szWorkplaceId, BOS_SD_FInvoice.szWorkplaceId) LEFT JOIN BOS_SD_SalesOrganization AS SO1 ON SO1.szSalesOrgId = DO_Workplace.szSalesOrgId LEFT JOIN BOS_SD_SalesOrganization AS SO2 ON SO2.szSalesOrgId = SO1.szParentSalesOrgId LEFT JOIN BOS_SD_SalesOrganization AS SO3 ON SO3.szSalesOrgId = SO2.szParentSalesOrgId LEFT JOIN BOS_INV_Product ON BOS_INV_Product.szProductId = BOS_SD_FInvoiceItem.szProductId                     
+                    LEFT JOIN BOS_INV_ProductCategory prodCat1 ON prodCat1.szProductCategoryId = BOS_INV_Product.szCategory_1
+                    LEFT JOIN BOS_INV_ProductCategory prodCat2 ON prodCat2.szProductCategoryId = BOS_INV_Product.szCategory_2
+                    LEFT JOIN BOS_INV_ProductCategory prodCat3 ON prodCat3.szProductCategoryId = BOS_INV_Product.szCategory_3
+                    LEFT JOIN BOS_INV_ProductCategory prodCat4 ON prodCat4.szProductCategoryId = BOS_INV_Product.szCategory_4
+                    LEFT JOIN BOS_INV_ProductCategory prodCat5 ON prodCat5.szProductCategoryId = BOS_INV_Product.szCategory_5
+                    LEFT JOIN BOS_INV_ProductCategory prodCat6 ON prodCat6.szProductCategoryId = BOS_INV_Product.szCategory_6
+                    LEFT JOIN BOS_INV_ProductCategory prodCat7 ON prodCat7.szProductCategoryId = BOS_INV_Product.szCategory_7
+                    LEFT JOIN BOS_INV_ProductCategory prodCat8 ON prodCat8.szProductCategoryId = BOS_INV_Product.szCategory_8
+                    LEFT JOIN BOS_INV_ProductCategory prodCat9 ON prodCat9.szProductCategoryId = BOS_INV_Product.szCategory_9
+                    LEFT JOIN BOS_INV_ProductCategory prodCat10 ON prodCat10.szProductCategoryId = BOS_INV_Product.szCategory_10 LEFT JOIN BOS_INV_ProductPurchaseInfo ON BOS_INV_ProductPurchaseInfo.szProductId = BOS_INV_Product.szProductId LEFT JOIN BOS_AP_Supplier ON BOS_AP_Supplier.szSuppId = BOS_INV_ProductPurchaseInfo.szDefaultSuppId LEFT JOIN BOS_GEN_FlagCashCredit ON BOS_GEN_FlagCashCredit.bCash = CONVERT(tinyint, BOS_SD_FInvoice.bCash) LEFT JOIN BOS_GEN_YesNo AS BGY_Taxable ON BGY_Taxable.bYesNo = CONVERT(tinyint, BOS_SD_FInvoiceItem.bTaxable) LEFT JOIN BOS_SD_CustCollRoutine ON BOS_SD_CustCollRoutine.szCustId = BOS_SD_FInvoice.szCustId LEFT JOIN BOS_SD_Route ON BOS_SD_Route.szRouteId = BOS_SD_CustCollRoutine.szDefaultRouteId LEFT JOIN BOS_PI_Employee AS COLLECTOR ON COLLECTOR.szEmployeeId = BOS_SD_Route.szOpUserId LEFT JOIN BOS_PI_Employee AS Sales ON Sales.szEmployeeId = BOS_SD_FInvoice.szSalesId LEFT JOIN BOS_PI_Employee AS SupSales ON SupSales.szEmployeeId = Sales.szSupervisorId LEFT JOIN BOS_PI_Employee AS EmpSup2 ON EmpSup2.szEmployeeId = BOS_SD_FDo.szSalesSupervisorId_2 LEFT JOIN BOS_PI_Employee AS EmpSup3 ON EmpSup3.szEmployeeId = BOS_SD_FDo.szSalesSupervisorId_3 LEFT JOIN BOS_PI_Employee AS DRIVER ON DRIVER.szEmployeeId = BOS_SD_FDo.szDriverId LEFT JOIN BOS_BIZ_PeriodicCalendar PerCal ON PerCal.dtmDate = dbo.KGenReturnDateNoTime(BOS_SD_FInvoice.dtmPeriode) LEFT JOIN BOS_INV_CompUomItem on BOS_INV_CompUomItem.szCompUomId = BOS_INV_Product.szCompUomId and BOS_INV_CompUomItem.shItemNumber = 0 LEFT JOIN BOS_GL_Company ON BOS_GL_Company.szCompanyId = DO_Workplace.szCompanyId LEFT JOIN BOS_INV_Vehicle ON BOS_SD_FDo.szVehicleId = BOS_INV_Vehicle.szVehicleId LEFT JOIN BOS_INV_VehicleCapacity ON BOS_INV_VehicleCapacity.szVehicleCapacityId = BOS_INV_Vehicle.szVehicleCapacityId LEFT JOIN BOS_INV_OrderItemType ON BOS_SD_FInvoiceItem.szOrderItemTypeId = BOS_INV_OrderItemType.szOrderItemTypeId
+                LEFT JOIN BOS_INV_ProductTechnicalSpecInfo specInfo on specInfo.szProductId = BOS_SD_FInvoiceItem.szProductId
+                LEFT JOIN (
+	                 SELECT BOS_SD_FInvItemBonusSource.szfinvoiceid, BOS_SD_FInvItemBonusSource.szproductid, 
+                            BOS_SD_FInvItemBonusSource.szFDoId, BOS_SD_FInvItemBonusSource.szParentId, BOS_SD_FInvItemBonusSource.szPaymentType, 
+                            BOS_SD_FInvItemBonusSource.szOrderItemTypeId
+		                ,sum(BOS_SD_FInvItemBonusSource.decbonusamount) AS sumDecBonusAmount
+                        ,sum(case when BOS_SD_FinvoiceItem.decDiscount=0 then 0 else BOS_SD_FInvItemBonusSource.decbonusamount * BOS_SD_FinvoiceItem.decTax / BOS_SD_FinvoiceItem.decDiscount end) as sumDecBonusAmountTax
+	                FROM BOS_SD_FInvItemBonusSource 
+                    JOIN BOS_SD_FinvoiceItem ON BOS_SD_FinvoiceItem.szFinvoiceId = BOS_SD_FInvItemBonusSource.szFInvoiceId
+                        AND BOS_SD_FinvoiceItem.shItemNumber = BOS_SD_FInvItemBonusSource.shItemNumber
+                    WHERE BOS_SD_FinvoiceItem.szPaymentType IN ('TDB', 'DOB')
+	                GROUP BY BOS_SD_FInvItemBonusSource.szfinvoiceid, BOS_SD_FInvItemBonusSource.szproductid, BOS_SD_FInvItemBonusSource.szFDoId, 
+                                BOS_SD_FInvItemBonusSource.szParentId, BOS_SD_FInvItemBonusSource.szPaymentType, BOS_SD_FInvItemBonusSource.szOrderItemTypeId
+	                ) a ON a.szFInvoiceId = BOS_SD_FInvoiceItem.szFInvoiceId
+	                AND a.szProductId = BOS_SD_FInvoiceItem.szProductId
+                    AND a.szFDoId = BOS_SD_FInvoiceItem.szDoId
+                    AND a.szParentId = BOS_SD_FInvoiceItem.szParentId
+                    AND a.szPaymentType = BOS_SD_FInvoiceItem.szPaymentType
+                    AND a.szOrderItemTypeId = BOS_SD_FInvoiceItem.szOrderItemTypeId
+                LEFT JOIN BOS_GL_TaxType ON BOS_GL_TaxType.szTaxTypeId = BOS_INV_Product.szTaxTypeId
+                LEFT JOIN NG_MART_ProductInfo on NG_MART_ProductInfo.productId = BOS_SD_FInvoiceItem.szProductId
+                LEFT JOIN BOS_INV_Principal as princip on princip.szPrincipalId = NG_MART_ProductInfo.principalId  
+                  WHERE  ((BOS_SD_FInvoiceItem.szProductId <> '' AND BOS_SD_FInvoiceItem.szInvItemType = 'DOR') OR BOS_SD_FInvoiceItem.szInvItemType <> 'DOR') AND BOS_SD_FInvoice.dtmPeriode >= '06/01/2024' AND BOS_SD_FInvoice.dtmPeriode < '09/05/2024' AND DO_Workplace.szWorkplaceId = 'HO-G2G' AND REVERSAL_DO.szFReversalId is null and REVERSAL_REVERSE_DO.szFReversalId is null  AND BOS_SD_FInvoice.bVoid = 0 AND BOS_SD_FInvoice.bApplied = 1  
+                                              GROUP BY BOS_SD_FDo.szVehicleId, dbo.KGenReturnDateNoTime(BOS_SD_FInvoice.dtmPeriode)
+                                             ) AS TableCapacityTotal ON TableCapacityTotal.szVehicleId = BOS_SD_FDo.szVehicleId AND TableCapacityTotal.dtmDate = dbo.KGenReturnDateNoTime(BOS_SD_FInvoice.dtmPeriode) LEFT JOIN BOS_SM_ConfigTemplateItem ConfigTemplateLokiCostTable ON 
+                                                        ConfigTemplateLokiCostTable.szConfigTemplateId = 'com.kontinum.bos.sd.orDoSoComparison3' 
+            				                        AND ConfigTemplateLokiCostTable.szConfigItemTypeId = 'WOR'
+            						                AND ConfigTemplateLokiCostTable.szConfigItemId = '00001'
+                                              LEFT JOIN BOS_SM_ConfigInfoItem ConfigInfoLokiCostTable ON 
+                                                        ConfigInfoLokiCostTable.szConfigTemplateId = ConfigTemplateLokiCostTable.szConfigTemplateId
+            						                AND ConfigInfoLokiCostTable.szConfigItemTypeId = ConfigTemplateLokiCostTable.szConfigItemTypeId 
+            						                AND ConfigInfoLokiCostTable.szConfigItemId = ConfigTemplateLokiCostTable.szConfigItemId
+            						                AND ConfigInfoLokiCostTable.szConfigItemTypeValue = DO_Workplace.szWorkplaceId LEFT JOIN BOS_SM_ConfigTemplateItem ConfigTemplateVehicleLokiFactorTable ON 
+                                                        ConfigTemplateVehicleLokiFactorTable.szConfigTemplateId = 'com.kontinum.bos.sd.orDoSoComparison3' 
+            				                        AND ConfigTemplateVehicleLokiFactorTable.szConfigItemTypeId = 'WOR'
+            						                AND ConfigTemplateVehicleLokiFactorTable.szConfigItemId = '00002'
+                                              LEFT JOIN BOS_SM_ConfigInfoItem ConfigInfoVehicleLokiFactorTable ON 
+                                                        ConfigInfoVehicleLokiFactorTable.szConfigTemplateId = ConfigTemplateVehicleLokiFactorTable.szConfigTemplateId
+            						                AND ConfigInfoVehicleLokiFactorTable.szConfigItemTypeId = ConfigTemplateVehicleLokiFactorTable.szConfigItemTypeId 
+            						                AND ConfigInfoVehicleLokiFactorTable.szConfigItemId = ConfigTemplateVehicleLokiFactorTable.szConfigItemId
+            						                AND ConfigInfoVehicleLokiFactorTable.szConfigItemTypeValue = DO_Workplace.szWorkplaceId LEFT JOIN BOS_SM_ConfigTemplateItem ConfigTemplateCurrentRateTable ON 
+                                                        ConfigTemplateCurrentRateTable.szConfigTemplateId = 'com.kontinum.bos.sd.orDoSoComparison3' 
+            				                        AND ConfigTemplateCurrentRateTable.szConfigItemTypeId = 'WOR'
+            						                AND ConfigTemplateCurrentRateTable.szConfigItemId = '00003'
+                                              LEFT JOIN BOS_SM_ConfigInfoItem ConfigInfoCurrentRateTable ON 
+                                                        ConfigInfoCurrentRateTable.szConfigTemplateId = ConfigTemplateCurrentRateTable.szConfigTemplateId
+            						                AND ConfigInfoCurrentRateTable.szConfigItemTypeId = ConfigTemplateCurrentRateTable.szConfigItemTypeId 
+            						                AND ConfigInfoCurrentRateTable.szConfigItemId = ConfigTemplateCurrentRateTable.szConfigItemId
+            						                AND ConfigInfoCurrentRateTable.szConfigItemTypeValue = DO_Workplace.szWorkplaceId LEFT JOIN BOS_SM_ConfigTemplateItem ConfigTemplateCurrentLokiFactorTable ON 
+                                                        ConfigTemplateCurrentLokiFactorTable.szConfigTemplateId = 'com.kontinum.bos.sd.orDoSoComparison3' 
+            				                        AND ConfigTemplateCurrentLokiFactorTable.szConfigItemTypeId = 'WOR'
+            						                AND ConfigTemplateCurrentLokiFactorTable.szConfigItemId = '00004'
+                                              LEFT JOIN BOS_SM_ConfigInfoItem ConfigInfoCurrentLokiFactorTable ON 
+                                                        ConfigInfoCurrentLokiFactorTable.szConfigTemplateId = ConfigTemplateCurrentLokiFactorTable.szConfigTemplateId
+            						                AND ConfigInfoCurrentLokiFactorTable.szConfigItemTypeId = ConfigTemplateCurrentLokiFactorTable.szConfigItemTypeId 
+            						                AND ConfigInfoCurrentLokiFactorTable.szConfigItemId = ConfigTemplateCurrentLokiFactorTable.szConfigItemId
+            						                AND ConfigInfoCurrentLokiFactorTable.szConfigItemTypeValue = DO_Workplace.szWorkplaceId LEFT JOIN BOS_SM_ConfigTemplateItem ConfigTemplateCurrentVolumeUtilizationTable ON 
+                                                        ConfigTemplateCurrentVolumeUtilizationTable.szConfigTemplateId = 'com.kontinum.bos.sd.orDoSoComparison3' 
+            				                        AND ConfigTemplateCurrentVolumeUtilizationTable.szConfigItemTypeId = 'WOR'
+            						                AND ConfigTemplateCurrentVolumeUtilizationTable.szConfigItemId = '00005'
+                                              LEFT JOIN BOS_SM_ConfigInfoItem ConfigInfoCurrentVolumeUtilizationTable ON 
+                                                        ConfigInfoCurrentVolumeUtilizationTable.szConfigTemplateId = ConfigTemplateCurrentVolumeUtilizationTable.szConfigTemplateId
+            						                AND ConfigInfoCurrentVolumeUtilizationTable.szConfigItemTypeId = ConfigTemplateCurrentVolumeUtilizationTable.szConfigItemTypeId 
+            						                AND ConfigInfoCurrentVolumeUtilizationTable.szConfigItemId = ConfigTemplateCurrentVolumeUtilizationTable.szConfigItemId
+            						                AND ConfigInfoCurrentVolumeUtilizationTable.szConfigItemTypeValue = DO_Workplace.szWorkplaceId LEFT JOIN BOS_SM_ConfigTemplateItem ConfigTemplateCurrentWeightUtilizationTable ON 
+                                                        ConfigTemplateCurrentWeightUtilizationTable.szConfigTemplateId = 'com.kontinum.bos.sd.orDoSoComparison3' 
+            				                        AND ConfigTemplateCurrentWeightUtilizationTable.szConfigItemTypeId = 'WOR'
+            						                AND ConfigTemplateCurrentWeightUtilizationTable.szConfigItemId = '00006'
+                                              LEFT JOIN BOS_SM_ConfigInfoItem ConfigInfoCurrentWeightUtilizationTable ON 
+                                                        ConfigInfoCurrentWeightUtilizationTable.szConfigTemplateId = ConfigTemplateCurrentWeightUtilizationTable.szConfigTemplateId
+            						                AND ConfigInfoCurrentWeightUtilizationTable.szConfigItemTypeId = ConfigTemplateCurrentWeightUtilizationTable.szConfigItemTypeId 
+            						                AND ConfigInfoCurrentWeightUtilizationTable.szConfigItemId = ConfigTemplateCurrentWeightUtilizationTable.szConfigItemId
+            						                AND ConfigInfoCurrentWeightUtilizationTable.szConfigItemTypeValue = DO_Workplace.szWorkplaceId LEFT JOIN BOS_SM_ConfigTemplateItem ConfigTemplateIncentivePerLokiTable ON 
+                                                        ConfigTemplateIncentivePerLokiTable.szConfigTemplateId = 'com.kontinum.bos.sd.orDoSoComparison3' 
+            				                        AND ConfigTemplateIncentivePerLokiTable.szConfigItemTypeId = 'WOR'
+            						                AND ConfigTemplateIncentivePerLokiTable.szConfigItemId = '00011'
+                                              LEFT JOIN BOS_SM_ConfigInfoItem ConfigInfoIncentivePerLokiTable ON 
+                                                        ConfigInfoIncentivePerLokiTable.szConfigTemplateId = ConfigTemplateIncentivePerLokiTable.szConfigTemplateId
+            						                AND ConfigInfoIncentivePerLokiTable.szConfigItemTypeId = ConfigTemplateIncentivePerLokiTable.szConfigItemTypeId 
+            						                AND ConfigInfoIncentivePerLokiTable.szConfigItemId = ConfigTemplateIncentivePerLokiTable.szConfigItemId
+            						                AND ConfigInfoIncentivePerLokiTable.szConfigItemTypeValue = DO_Workplace.szWorkplaceId  WHERE  ((BOS_SD_FInvoiceItem.szProductId <> '' AND BOS_SD_FInvoiceItem.szInvItemType = 'DOR') OR BOS_SD_FInvoiceItem.szInvItemType <> 'DOR') AND BOS_SD_FInvoice.dtmPeriode >= '06/01/2024' AND BOS_SD_FInvoice.dtmPeriode < '09/05/2024' AND DO_Workplace.szWorkplaceId = 'HO-G2G' AND REVERSAL_DO.szFReversalId is null and REVERSAL_REVERSE_DO.szFReversalId is null  AND BOS_SD_FInvoice.bVoid = 0 AND BOS_SD_FInvoice.bApplied = 1     ORDER BY BOS_SD_FInvoice.szWorkplaceId ASC, ISNULL(BOS_GL_Workplace.szName,'') ASC, ISNULL(BOS_SD_FDo.szFSoId, '') ASC, ISNULL(BOS_SD_FDo.szDoId, '') ASC, BOS_SD_FInvoice.szFInvoiceId ASC, dtmPeriode ASC, UPPER(BOS_SD_FInvoice.szSalesId) ASC, Sales.szName ASC, ISNULL(BOS_SD_FDo.szCustId, BOS_SD_FInvoice.szCustId) ASC, CASE WHEN BOS_SD_FDo.szCustId IS NOT NULL 
+                                   THEN ISNULL(CustomerDelivery.szName, '') 
+                                   ELSE ISNULL(BOS_AR_Customer.szName, '')
+                                   END ASC, ISNULL(BOS_AR_Customer.CustszAddress_1, '') ASC, BOS_AR_CustLocation.LocationszCity ASC, BOS_SD_FInvoiceItem.szProductId ASC, isnull(BOS_INV_Product.szName,'') ASC, Price ASC, BOS_SD_FInvoiceItem.decQty ASC, decAmount ASC, BOS_SD_FInvoiceItem.decTax + isnull(a.sumDecBonusAmountTax,0) ASC, decNettAmount ASC, decNettAmountWithTax ASC, decDiscount ASC, decDiscountItem ASC
