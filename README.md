@@ -23,6 +23,8 @@ This project integrates data from multiple sources to provide a unified and inte
   ![Power BI Dashboard](https://github.com/user-attachments/assets/f429f042-2907-4e06-8caa-7e22ce030034)
   ![Power BI Dashboard](https://github.com/user-attachments/assets/0e903645-df6f-42dc-8cfe-3db843cfb568)
   ![Power BI Dashboard](https://github.com/user-attachments/assets/dee5575b-e4c8-4440-8024-ba12f89533df)
+  ![Power BI Dashboard](https://github.com/user-attachments/assets/31472319-a327-462d-9062-05795b214371)
+
 
 - **Python Database Relation Code Examples**: These examples illustrate Python code used to handle the relationships and ETL processes from SQL Server and MongoDB to Google BigQuery.
 
